@@ -1,68 +1,71 @@
 const { exec } = require('child_process');
 const {
-  split, startsWith, map, find, flow, reduce,
+  split, startsWith, map, find, remove,
 } = require('lodash');
 const {
-  slice, isEmpty, includes, trim, trimRight,
+  slice, isEmpty, includes, trim, trimRight, indexOf, count, replaceAll,
 } = require('voca');
-
-const findTitleSeparatorLine = (taskLines) => find(taskLines, (line) => startsWith(line, '='));
-
-const convertSeparatorLineToArray = (titleSeparatorLine) => split(titleSeparatorLine, ' ');
-
-const convertSeparatorValuesToSizes = (separatorValues) => map(
-  separatorValues,
-  (value) => value.length,
-);
-
-const convertColumnSizesToStartIndexes = (columnSizes) => reduce(
-  columnSizes,
-  (acc, val, idx, coll) => (idx === 0 ? [0] : [...acc, acc[idx - 1] + coll[idx - 1] + 2]),
-  [],
-);
-
-const getColumnEndIndexes = (taskLines) => flow([
-  findTitleSeparatorLine,
-  convertSeparatorLineToArray,
-  convertSeparatorValuesToSizes,
-  convertColumnSizesToStartIndexes,
-])(taskLines);
 
 const convertTasksToArray = (tasks) => split(tasks, '\r\n');
 
-const convertLinesToObjects = (lines, columnStartIndexes) => map(lines, (line) => {
+const findTitleSeparatorLine = (taskLines) => find(taskLines, (line) => startsWith(line, '='));
+
+const calculateColumnsInitialIndexes = (titleSeparatorLine) => {
+  const initialIndexes = [];
+  let currIdx = 0;
+
+  do {
+    initialIndexes.push(currIdx);
+    currIdx = indexOf(titleSeparatorLine, ' ', currIdx + 1) + 1;
+  } while (currIdx > 0);
+
+  initialIndexes.push(count(titleSeparatorLine) + 1);
+
+  return initialIndexes;
+};
+
+const getColumnValue = (line, columnInitialIndexes, index) => trim(slice(
+  line,
+  columnInitialIndexes[index],
+  columnInitialIndexes[index + 1] - 1,
+));
+
+const convertLinesToObjects = (lines, columnInitialIndexes) => map(lines, (line) => {
   if (isEmpty(line) || includes(line, 'Image Name') || startsWith(line, '=')) {
     return {};
   }
 
   return {
-    name: trim(slice(line, 0, columnStartIndexes[0])),
-    pid: parseInt(trim(slice(line, columnStartIndexes[0], columnStartIndexes[1])), 10),
-    sessionName: trim(slice(line, columnStartIndexes[1], columnStartIndexes[2])),
-    sessionNumber: parseInt(trim(slice(line, columnStartIndexes[2], columnStartIndexes[3])), 10),
-    memory: parseInt(trimRight(trim(slice(line, columnStartIndexes[3])), ' K'), 10),
+    name: getColumnValue(line, columnInitialIndexes, 0),
+    pid: parseInt(getColumnValue(line, columnInitialIndexes, 1), 10),
+    sessionName: getColumnValue(line, columnInitialIndexes, 2),
+    sessionNumber: parseInt(getColumnValue(line, columnInitialIndexes, 3), 10),
+    memory: parseInt(replaceAll(trimRight(getColumnValue(
+      line,
+      columnInitialIndexes,
+      4,
+    ), ' K'), ',', ''), 10),
   };
 });
+
+const clearEmptyObjects = (objects) => remove(objects, (object) => !!object.name);
 
 exec('tasklist', (err, stdout /* , stderr */) => {
   if (stdout) {
     const tasksArray = convertTasksToArray(stdout);
-    console.log({ tasksArray });
-
-    const columnSizes = getColumnEndIndexes(tasksArray);
-    console.log({ columnSizes });
-
-    const tasks = convertLinesToObjects(tasksArray, columnSizes);
+    const titleSeparatorLine = findTitleSeparatorLine(tasksArray);
+    const columnsInitialIndexes = calculateColumnsInitialIndexes(titleSeparatorLine);
+    const convertedLines = convertLinesToObjects(tasksArray, columnsInitialIndexes);
+    const tasks = clearEmptyObjects(convertedLines);
     console.log({ tasks });
   }
 });
 
 module.exports = {
-  findTitleSeparatorLine,
-  convertSeparatorLineToArray,
-  convertSeparatorValuesToSizes,
-  convertColumnSizesToIndexes: convertColumnSizesToStartIndexes,
-  getColumnEndIndexes,
   convertTasksToArray,
+  findTitleSeparatorLine,
+  calculateColumnsInitialIndexes,
+  getColumnValue,
   convertLinesToObjects,
+  clearEmptyObjects,
 };
