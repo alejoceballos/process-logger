@@ -1,3 +1,4 @@
+
 const { exec } = require('child_process');
 const {
   split, startsWith, map, find, remove,
@@ -50,16 +51,21 @@ const convertLinesToObjects = (lines, columnInitialIndexes) => map(lines, (line)
 
 const clearEmptyObjects = (objects) => remove(objects, (object) => !!object.name);
 
-exec('tasklist', (err, stdout /* , stderr */) => {
+const run = async () => {
+  const { stdout, stderr } = await exec('tasklist');
+
+  if (stderr) throw new Error(stderr);
+
   if (stdout) {
     const tasksArray = convertTasksToArray(stdout);
     const titleSeparatorLine = findTitleSeparatorLine(tasksArray);
     const columnsInitialIndexes = calculateColumnsInitialIndexes(titleSeparatorLine);
     const convertedLines = convertLinesToObjects(tasksArray, columnsInitialIndexes);
-    const tasks = clearEmptyObjects(convertedLines);
-    console.log({ tasks });
+    return clearEmptyObjects(convertedLines);
   }
-});
+
+  return [];
+};
 
 module.exports = {
   convertTasksToArray,
@@ -68,4 +74,5 @@ module.exports = {
   getColumnValue,
   convertLinesToObjects,
   clearEmptyObjects,
+  run,
 };

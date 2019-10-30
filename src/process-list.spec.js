@@ -6,7 +6,8 @@ const {
   getColumnValue,
   convertLinesToObjects,
   clearEmptyObjects,
-} = require('./process-manager');
+  run,
+} = require('./process-list');
 
 describe('Process Manager', () => {
   const titleLine = 'Image Name                     PID Session Name        Session#    Mem Usage';
@@ -82,5 +83,9 @@ describe('Process Manager', () => {
   it('should clear all empty objects from the task objects list', () => {
     const actual = clearEmptyObjects(convertedLines);
     assert.deepEqual(actual, clearedConvertedLines);
+  });
+
+  it('should output all tasks as a list of structured objects', () => {
+
   });
 });
