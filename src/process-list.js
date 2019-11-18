@@ -1,11 +1,10 @@
-
-const { exec } = require('child_process');
 const {
   split, startsWith, map, find, remove,
 } = require('lodash');
 const {
   slice, isEmpty, includes, trim, trimRight, indexOf, count, replaceAll,
 } = require('voca');
+const { retrieve } = require('./process-retriever');
 
 const convertTasksToArray = (tasks) => split(tasks, '\r\n');
 
@@ -52,12 +51,10 @@ const convertLinesToObjects = (lines, columnInitialIndexes) => map(lines, (line)
 const clearEmptyObjects = (objects) => remove(objects, (object) => !!object.name);
 
 const run = async () => {
-  const { stdout, stderr } = await exec('tasklist');
+  const tasks = await retrieve();
 
-  if (stderr) throw new Error(stderr);
-
-  if (stdout) {
-    const tasksArray = convertTasksToArray(stdout);
+  if (tasks) {
+    const tasksArray = convertTasksToArray(tasks);
     const titleSeparatorLine = findTitleSeparatorLine(tasksArray);
     const columnsInitialIndexes = calculateColumnsInitialIndexes(titleSeparatorLine);
     const convertedLines = convertLinesToObjects(tasksArray, columnsInitialIndexes);
