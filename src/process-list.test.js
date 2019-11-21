@@ -1,6 +1,14 @@
 const processRetriever = require('./process-retriever');
 
 const {
+  columnTitlesLine,
+  columnsSeparatorsLine,
+  systemIdleLine,
+  systemLine,
+  execTaskListResult,
+} = require('./test-utils/test-utils');
+
+const {
   convertTasksToArray,
   findTitleSeparatorLine,
   calculateColumnsInitialIndexes,
@@ -13,12 +21,7 @@ const {
 jest.mock('./process-retriever');
 
 describe('Process Manager', () => {
-  const titleLine = 'Image Name                     PID Session Name        Session#    Mem Usage';
-  const separatorLine = '========================= ======== ================ =========== ============';
-  const systemIdleLine = 'System Idle Process              0 Services                   0          8 K';
-  const systemLine = 'System                           4 Services                   0      8,288 K';
-  const tasks = `\r\n${titleLine}\r\n${separatorLine}\r\n${systemIdleLine}\r\n${systemLine}`;
-  const lines = ['', titleLine, separatorLine, systemIdleLine, systemLine];
+  const lines = ['', columnTitlesLine, columnsSeparatorsLine, systemIdleLine, systemLine];
   const clearedConvertedLines = [
     {
       name: 'System Idle Process',
@@ -38,22 +41,22 @@ describe('Process Manager', () => {
   const convertedLines = [{}, {}, {}, ...clearedConvertedLines];
   const columnsStartIndexes = [0, 26, 35, 52, 64, 77];
 
-  beforeEach(() => {
+  afterEach(() => {
     processRetriever.retrieve.mockClear();
   });
 
   it('should convert the whole tasks string to an array of tasks lines', () => {
-    const actual = convertTasksToArray(tasks);
+    const actual = convertTasksToArray(execTaskListResult);
     expect(actual).toEqual(lines);
   });
 
   it('should find the title separator line among all lines', () => {
     const actual = findTitleSeparatorLine(lines);
-    expect(actual).toEqual(separatorLine);
+    expect(actual).toEqual(columnsSeparatorsLine);
   });
 
   it('should calculate all columns initial indexes from the title separator line', () => {
-    const actual = calculateColumnsInitialIndexes(separatorLine);
+    const actual = calculateColumnsInitialIndexes(columnsSeparatorsLine);
     expect(actual).toEqual(columnsStartIndexes);
   });
 
@@ -93,7 +96,7 @@ describe('Process Manager', () => {
   });
 
   it('should output all tasks as a list of structured objects', async () => {
-    processRetriever.retrieve.mockResolvedValue(tasks);
+    processRetriever.retrieve.mockResolvedValue(execTaskListResult);
     const actual = await run();
     expect(actual).toEqual(clearedConvertedLines);
   });

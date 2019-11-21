@@ -1,12 +1,29 @@
-const { retrieve } = require('./process-retriever');
+const util = require('util');
+const { retrieve, getPidByImageName } = require('./process-retriever');
+const {
+  someImageName,
+  someImagePid,
+  execTaskListResult,
+} = require('./test-utils/test-utils');
+
+jest.mock('util');
 
 describe('Process Retriever', () => {
-  const titleLine = 'Image Name                     PID Session Name        Session#    Mem Usage';
-  const separatorLine = '========================= ======== ================ =========== ============';
+  beforeEach(() => {
+    util.promisify.mockReturnValue(() => ({ stdout: execTaskListResult }));
+  });
+
+  afterEach(() => {
+    util.promisify.mockClear();
+  });
 
   it('should return a list of processes', async () => {
     const actual = await retrieve();
-    expect(actual).toContain(titleLine);
-    expect(actual).toContain(separatorLine);
+    expect(actual).toEqual(execTaskListResult);
+  });
+
+  it('should return the process ID when searching by its Image Name', async () => {
+    const actual = await getPidByImageName(someImageName);
+    expect(actual).toEqual(parseInt(someImagePid));
   });
 });
